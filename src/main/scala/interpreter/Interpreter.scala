@@ -44,5 +44,5 @@ class Interpreter {
     }
   }
   
-  def resest = theBigRepl.reset
+  def reset = theBigRepl.reset
 }

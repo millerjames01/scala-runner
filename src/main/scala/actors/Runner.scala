@@ -12,7 +12,7 @@ class Runner extends Actor {
   val interp = new Interpreter
   
   def receive = {
-    case Run(code) => interp { code }
+    case Run(code) => sender ! interp { code }
   }
 }
 

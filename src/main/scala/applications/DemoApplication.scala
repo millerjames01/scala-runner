@@ -1,33 +1,42 @@
 package applications
 
 import scala.concurrent.duration._
+import scala.language.implicitConversions
 import com.typesafe.config.ConfigFactory
 import akka.actor.ActorSystem
+import akka.actor.Props
+
+import actors.Delegator
+import actors.Manager
+import data.Request
 
 object DemoApplication {
   def main(args: Array[String]): Unit = {
-    if (args.isEmpty || args.head == "Calculator")
-      startRemoteCalculatorSystem()
-    if (args.isEmpty || args.head == "Lookup")
-      startRemoteLookupSystem()
+    if (!args.isEmpty && args.head == "Demo") startRemoteManagementSystem()
+    else startRemoteRunnerSystem()
   }
 
-  def startRemoteCalculatorSystem(): Unit = {
-    val system = ActorSystem("CalculatorSystem",
-      ConfigFactory.load("calculator"))
-    system.actorOf(Props[CalculatorActor], "calculator")
+  def startRemoteRunnerSystem(): Unit = {
+    val system = ActorSystem("RunnerSystem",
+      ConfigFactory.load("remoterunner"))
+    system.actorOf(Props[Delegator], "delegator")
 
-    println("Started CalculatorSystem - waiting for messages")
+    println("Started DelegatorSystem - waiting for messages")
   }
 
-  
-    println("Started LookupSystem")
+  def startRemoteManagementSystem(): Unit = {
+    val system =
+      ActorSystem("ManagementSystem", ConfigFactory.load("remotemanagement"))
+    val remotePath =
+      "akka.tcp://RunnerSystem@127.0.0.1:2552/user/delegator"
+    val manager = system.actorOf(Props(classOf[Manager], remotePath), "manager")
+    
     import system.dispatcher
-    system.scheduler.schedule(1.second, 1.second) {
-      if (Random.nextInt(100) % 2 == 0)
-        actor ! Add(Random.nextInt(100), Random.nextInt(100))
-      else
-        actor ! Subtract(Random.nextInt(100), Random.nextInt(100))
-    }
+    
+    manager ! Request("val x = 2 + 3", 2, System.currentTimeMillis)
+    manager ! Request("val y = x + 2", 2, System.currentTimeMillis)
+    manager ! Request("def f(z: Int): Int = f(z - 1)", 2, System.currentTimeMillis())
+    manager ! Request("f(2)", 2, System.currentTimeMillis())
+    manager ! Request("x + y", 2, System.currentTimeMillis())
   }
 }
